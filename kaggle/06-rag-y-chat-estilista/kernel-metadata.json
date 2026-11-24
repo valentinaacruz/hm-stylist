@@ -1,0 +1,20 @@
+{
+  "id": "angelnoelprezmartnez/06-rag-y-chat-estilista",
+  "title": "06- RAG y chat estilista",
+  "code_file": "../run_notebook.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": ["angelnoelprezmartnez/hm-stylist-src"],
+  "competition_sources": ["h-and-m-personalized-fashion-recommendations"],
+  "kernel_sources": [
+    "valentina3030/01-eda-dmii",
+    "isaacmov26/03-embeddings",
+    "isaacmov26/04-complementary"
+  ],
+  "model_sources": []
+}
