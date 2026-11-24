@@ -87,7 +87,9 @@ RESPONSE_KIND = {
 MSG_NOT_FASHION = ("La imagen no parece mostrar ropa, calzado ni accesorios, así que no puedo buscar prendas "
                    "a partir de ella. ¿Me compartes la foto de una prenda o me describes lo que buscas?")
 MSG_CLARIFY = "¿Qué tipo de prenda buscas o para qué ocasión? Por ejemplo: «un vestido para una boda»."
-NOTE_OOC = "No encontré esa prenda exacta en el catálogo disponible; estas son las opciones más parecidas. "
+NOTE_OOC = "Te muestro las prendas del catálogo que más se parecen a la de tu foto. "
+# "estos jeans", "mi vestido": la prenda que el usuario YA tiene
+OWN_RE = re.compile(r"\b(?:est[eao]s?|mis?|tus?)\s+((?:\w+\s+){0,2}\w+)", re.I)
 
 ID_RE = re.compile(r"\b\d{9,10}\b")
 COLOR_WORDS = re.compile(
@@ -97,6 +99,8 @@ COLOR_WORDS = re.compile(
     r"navy)\b", re.I)
 LINEA_WORDS = re.compile(r"\b(hombres?|caballeros?|mujer(es)?|damas?|niñ[oa]s?|beb[eé]s?|juvenil(es)?|"
                          r"deportiv[oa]s?|men|women|kids?|baby|sport)\b", re.I)
+COMBINE_WORDS = re.compile(r"combin|con qu[eé]|outfit|look completo|\bvan? con\b|le va[ny]?\b|le queda|"
+                           r"quedan? con|acompa[ñn]|complement", re.I)
 OTHER_COLOR = re.compile(r"\b(otro|otros|distinto|diferente)s?\s+colou?r|\bother colou?r|\bdifferent colou?r", re.I)
 BRANDS = re.compile(r"\b(nike|adidas|puma|zara|gucci|prada|shein|levi'?s|reebok|vans|converse|bershka|pull ?& ?bear|"
                     r"uniqlo|mango|louis vuitton|balenciaga|new balance)\b", re.I)
@@ -197,6 +201,10 @@ class Stylist:
         p_moda = self.enc.fashion_prob(vec)
         max_sim = self.rec.max_sim(vec)
         knn_attrs = self.rec.attributes(vec)
+        # El grupo de la prenda se vota solo entre los 3 vecinos más cercanos: con 10, un vestido rodeado de
+        # túnicas parecidas salía como "parte de arriba".
+        top3 = self.rec.attributes(vec, k=3)
+        knn_attrs["product_group_name"] = top3["product_group_name"]
         lat["clip"] = time.perf_counter() - t
         vlm = None
         if self.llm is not None and self.llm.vision:
@@ -213,7 +221,7 @@ class Stylist:
         if not message and s.img_vec is not None:          # solo imagen: similares + complementos, sin filtros
             raw, secs = {"intencion": "ambos"}, 0.0
         elif self.llm is None:
-            raw, secs = {"intencion": "similar", "prenda_en": message}, 0.0
+            raw, secs = self._plan_keywords(message), 0.0
         else:
             prev = {k: s.plan.get(k) for k in SLOTS + ("intencion",)} if s.plan else None
             users = [t for r, t in s.history if r == "usuario"][-3:]
@@ -223,7 +231,16 @@ class Stylist:
                    f"Mensaje NUEVO del usuario: {message}")
             msgs = [{"role": "system", "content": self.planner_system}, {"role": "user", "content": ctx}]
             raw, secs = self.llm.chat_json(msgs, temperature=0.0, max_tokens=250)
+            if raw is None:        # LLM caído o respuesta ilegible: plan por palabras clave
+                raw = self._plan_keywords(message)
         return self._merge(s, raw if isinstance(raw, dict) else {}, message), secs
+
+    @staticmethod
+    def _plan_keywords(message):
+        """Plan sin LLM: intención por palabras clave y el texto tal cual como consulta."""
+        if COMBINE_WORDS.search(message):
+            return {"intencion": "complemento"}
+        return {"intencion": "similar", "prenda_en": message, "otro_color": bool(OTHER_COLOR.search(message))}
 
     def _merge(self, s, p, message):
         """Valida los campos del LLM contra el mensaje y el catálogo, y hereda lo que no cambió."""
@@ -264,7 +281,14 @@ class Stylist:
             new["color"] = color          # solo si dijo un color nuevo explícito
 
         # Grupo de la prenda que el usuario tiene (imagen o búsqueda) y de la que pide ("dress" → Garment Full body)
-        own = (s.img_attrs or {}).get("product_group_name") if s.img_vec is not None else None
+        # Prenda que el usuario YA tiene: 1) lo que dice el texto ("estos jeans"), 2) el VLM ("vestido"),
+        # 3) los vecinos visuales. En una foto de cuerpo entero la imagen sola no dice de qué prenda habla.
+        own = self._own_from_message(message) if intent == "complemento" else None
+        own_from_text = own
+        if own is None and s.img_vec is not None:
+            a = s.img_attrs or {}
+            vlm_groups = _groups_in(f"{a.get('prenda', '')} {a.get('garment_en', '')}")
+            own = vlm_groups[0] if vlm_groups else a.get("product_group_name")
         own = own or next(iter(_groups_in(new["prenda_en"]) or _groups_in(prev.get("prenda_en", ""))), None)
         garment_groups = [g for g in _groups_in(new["prenda_en"]) if g in self.groups]
         grupo_prenda = garment_groups[0] if len(garment_groups) == 1 else ""
@@ -282,7 +306,25 @@ class Stylist:
         query_en = " ".join(x for x in [new["estilo_en"], new["color"].lower(), new["prenda_en"]] if x)
         return {"intencion": intent, **new, "color_mensaje": color, "excluir_color": exclude_color,
                 "tipo_complemento": tipo_comp, "grupo_prenda": grupo_prenda, "grupo_propio": own or "",
+                "propio_en": GROUP_NOUN.get(own_from_text, "") if own_from_text else "",
                 "consulta_en": query_en, "pregunta": str(p.get("pregunta") or "").strip(), "notas": notes}
+
+    def _own_from_message(self, message):
+        """Grupo de la prenda que el usuario dice tener: "estos jeans", "mi vestido", o "¿con qué combino unos
+        jeans?" (un solo grupo nombrado junto a "combinar"). None si el mensaje no lo dice."""
+        for m in OWN_RE.finditer(message):
+            g = [x for x in _groups_in(m.group(1)) if x in self.groups]
+            if g:
+                return g[0]
+        # "¿con qué combino unos jeans?" → la prenda va DESPUÉS del verbo: es la suya.
+        # "¿unos zapatos que combinen?" → va ANTES: es la que pide (no la suya).
+        verb = re.search(r"combin", message, re.I)
+        groups = [x for x in _groups_in(message) if x in self.groups]
+        if verb and len(groups) == 1:
+            m = re.search(GROUP_WORDS[groups[0]], message, re.I)
+            if m and m.start() > verb.start():
+                return groups[0]
+        return None
 
     def _color_from_text(self, text):
         for pat, value in COLOR_MAP:
@@ -331,11 +373,25 @@ class Stylist:
         text_vec = self.enc.text(plan["consulta_en"])[0] if plan["consulta_en"] else None
         lat["texto"] = time.perf_counter() - t
 
+        anchor_group = None
         if intent == "complemento":
-            # Anclas = lo que el usuario YA tiene: la imagen, o lo último que buscó
+            # Anclas = lo que el usuario YA tiene: la imagen, o lo último que buscó. Con foto, las anclas se
+            # limitan al tipo de su prenda; si el texto la nombra ("estos jeans") se suma a la búsqueda de anclas.
             q_anchor = s.img_vec if has_img else text_vec
+            # Solo con fotos reales (sin artículo casi idéntico en el catálogo): con una foto de catálogo la imagen
+            # ya identifica la prenda exacta y sumar texto la diluiría.
+            real_photo = s.img_max_sim is not None and s.img_max_sim < self.tau_ooc
+            if has_img and plan["propio_en"] and real_photo:
+                q_anchor = normalize(s.img_vec + self.enc.text(plan["propio_en"])[0])
+            if has_img and plan["grupo_propio"]:
+                anchor_group = plan["grupo_propio"]
             q = q_anchor
         else:
+            # Si pide otro tipo de prenda que la de su foto ("busco una chamarra" tras subir un pantalón),
+            # la foto no se mezcla en la búsqueda.
+            if has_img and plan["grupo_prenda"] and plan["grupo_propio"] and plan["grupo_prenda"] != plan["grupo_propio"]:
+                has_img = False
+                flags.append("busqueda_sin_foto")
             parts = ([s.img_vec] if has_img else []) + ([text_vec] if text_vec is not None else [])
             q = normalize(np.sum(parts, axis=0)) if parts else None
             q_anchor = s.img_vec if has_img else q
@@ -348,6 +404,10 @@ class Stylist:
         basics = set(BASICS)
         if plan["grupo_propio"] == "Garment Full body":
             basics.add("Garment Lower body")
+        if plan["grupo_propio"] == "Garment Lower body":      # ni vestidos sobre unos jeans
+            basics.add("Garment Full body")
+        if plan["grupo_propio"] != "Swimwear":          # traje de baño solo con ropa de playa o si se pide
+            basics.add("Swimwear")
         basics = sorted(basics - {plan["tipo_complemento"]})
         # Estilo pedido ("formal", "beach wedding"): re-ordena los complementos por afinidad visual
         style_vec = self.enc.text(f"{plan['estilo_en']} outfit")[0] if plan["estilo_en"] else None
@@ -357,7 +417,8 @@ class Stylist:
         variants = self._filter_variants(plan, intent)
         for j, (f, e) in enumerate(variants):
             res, rl = self.rec.recommend(q, q_anchor, f, e, k=k, n_anchors=5, kinds=kinds, filter_kinds=filter_kinds,
-                                         comp_exclude_groups=basics, style_vec=style_vec)
+                                         comp_exclude_groups=basics, style_vec=style_vec, anchor_group=anchor_group,
+                                         comp_max_per_group=None if plan["tipo_complemento"] else 2)
             counts = res.tipo.value_counts() if not res.empty else {}
             if all(counts.get(kd, 0) >= need for kd in kinds):
                 break

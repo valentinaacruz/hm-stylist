@@ -1,0 +1,21 @@
+{
+  "id": "angelnoelprezmartnez/07-exportar-demo",
+  "title": "07-exportar-demo",
+  "code_file": "run_notebook.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": ["angelnoelprezmartnez/hm-stylist-src"],
+  "competition_sources": ["h-and-m-personalized-fashion-recommendations"],
+  "kernel_sources": [
+    "valentina3030/01-eda-dmii",
+    "isaacmov26/03-embeddings",
+    "isaacmov26/04-complementary",
+    "angelnoelprezmartnez/06-rag-y-chat-estilista"
+  ],
+  "model_sources": []
+}

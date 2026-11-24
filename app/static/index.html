@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HyM · Estilista virtual</title>
+  <meta name="description" content="Estilista virtual con IA sobre el catálogo del dataset H&M (proyecto académico).">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23111'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='26' fill='white' text-anchor='middle'%3EHyM%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span>Proyecto académico · Estilista virtual con IA</span>
+  <span class="topbar-right">
+    <a href="#como">Cómo funciona</a><span class="sep">|</span>
+    <a href="#catalogo">Catálogo</a><span class="sep">|</span>
+    <span id="estado" class="estado" title="Estado del modelo de lenguaje">Conectando…</span>
+  </span>
+</div>
+
+<header class="header">
+  <nav class="nav-left" aria-label="Líneas">
+    <a href="#catalogo" data-linea="mujer">Mujer</a>
+    <a href="#catalogo" data-linea="hombre">Hombre</a>
+    <a href="#catalogo" data-linea="divided">Divided</a>
+    <a href="#catalogo" data-linea="ninos">Niños</a>
+    <a href="#catalogo" data-linea="sport">Sport</a>
+  </nav>
+  <a class="logo" href="#top" aria-label="HyM, inicio">H<i>y</i>M</a>
+  <div class="nav-right">
+    <form id="buscar" class="search" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input name="q" placeholder="Pregúntale al estilista…" aria-label="Pregúntale al estilista">
+    </form>
+    <button class="btn-stylist" data-open-chat>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>
+      Estilista
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <!-- Portada -->
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Estilista virtual · Colección 2026</p>
+      <h1>Viste como<br><em>tú</em> quieres.</h1>
+      <p class="lead">Sube la foto de una prenda o cuéntale a nuestro estilista qué buscas. Te propone prendas
+        parecidas y cómo combinarlas, solo con artículos reales del catálogo.</p>
+      <div class="hero-cta">
+        <button class="btn-dark" data-open-chat>Habla con tu estilista</button>
+        <a class="link-line" href="#catalogo">Explorar catálogo</a>
+      </div>
+      <dl class="hero-stats">
+        <div><dt id="stat-articulos">29k</dt><dd>prendas disponibles</dd></div>
+        <div><dt>3.6M</dt><dd>compras analizadas</dd></div>
+        <div><dt>100%</dt><dd>recomendaciones reales</dd></div>
+      </dl>
+    </div>
+    <figure class="hero-photo">
+      <img src="/static/img/portada.jpg" alt="Modelo con conjunto negro">
+      <figcaption>Nueva<br>colección<br>2026</figcaption>
+    </figure>
+  </section>
+
+  <!-- Franja de líneas -->
+  <section class="strip" aria-label="Líneas">
+    <a class="strip-card" href="#catalogo" data-linea="mujer">
+      <img src="/static/img/mujer.jpg" alt="">
+      <div><h3>Mujer</h3><p>Básicos elevados para todos los días.</p><span class="link-line light">Ver mujer →</span></div>
+    </a>
+    <a class="strip-card" href="#catalogo" data-linea="hombre">
+      <img src="/static/img/hombre.jpg" alt="">
+      <div><h3>Hombre</h3><p>Estilo sin esfuerzo, de la oficina al fin de semana.</p><span class="link-line light">Ver hombre →</span></div>
+    </a>
+    <a class="strip-card" href="#catalogo" data-linea="divided">
+      <img src="/static/img/divided.jpg" alt="">
+      <div><h3>Divided</h3><p>Tendencias jóvenes, cortes amplios.</p><span class="link-line light">Ver divided →</span></div>
+    </a>
+    <a class="strip-card" href="#catalogo" data-linea="sport">
+      <img src="/static/img/sport.jpg" alt="">
+      <div><h3>Sport</h3><p>Comodidad que se mueve contigo.</p><span class="link-line light">Ver sport →</span></div>
+    </a>
+  </section>
+
+  <!-- Banner de temporada -->
+  <section class="season">
+    <img src="/static/img/temporada.jpg" alt="Modelo con traje oscuro">
+    <div class="season-copy">
+      <p class="eyebrow">Nueva temporada</p>
+      <h2>Sube una foto.<br><em>Te armamos</em> el outfit.</h2>
+      <p>El estilista reconoce la prenda, busca alternativas parecidas y te dice con qué combinarla a partir de lo
+        que otras personas compraron juntas.</p>
+      <button class="btn-dark" data-open-chat="foto">Probar con una foto</button>
+    </div>
+  </section>
+
+  <!-- Ventajas -->
+  <section class="features">
+    <div><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="1"/><circle cx="12" cy="13" r="4"/><path d="M8 6l2-3h4l2 3"/></svg>
+      <h4>Busca con una foto</h4><p>Reconocimiento visual con Fashion-CLIP</p></div>
+    <div><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/><circle cx="18" cy="16" r="3"/></svg>
+      <h4>Refina al hablar</h4><p>"En negro", "más formal", "otro color"</p></div>
+    <div><svg viewBox="0 0 24 24"><path d="M8 3l-4 3v4h3v11h10V10h3V6l-4-3-2 2h-4z"/></svg>
+      <h4>Outfits completos</h4><p>Complementos de compras reales</p></div>
+    <div><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="m9 12 2 2 4-4"/></svg>
+      <h4>Sin inventos</h4><p>Solo prendas que existen en el catálogo</p></div>
+  </section>
+
+  <!-- Catálogo -->
+  <section id="catalogo" class="catalog">
+    <aside class="sidebar">
+      <h4>Línea</h4>
+      <ul id="lineas">
+        <li><a href="#catalogo" data-linea="">Todo</a></li>
+        <li><a href="#catalogo" data-linea="mujer">Mujer</a></li>
+        <li><a href="#catalogo" data-linea="hombre">Hombre</a></li>
+        <li><a href="#catalogo" data-linea="divided">Divided</a></li>
+        <li><a href="#catalogo" data-linea="ninos">Niños</a></li>
+        <li><a href="#catalogo" data-linea="sport">Sport</a></li>
+      </ul>
+      <h4>Categoría</h4>
+      <ul id="grupos"></ul>
+    </aside>
+    <div class="catalog-main">
+      <div class="catalog-head">
+        <p class="crumbs" id="crumbs">HyM / Todo</p>
+        <h2 id="catalog-title">Lo más vendido</h2>
+        <p class="hint">Pasa el cursor sobre una prenda para pedirle al estilista <b>prendas parecidas</b> o <b>con qué combinarla</b>.</p>
+      </div>
+      <div id="grid" class="grid" aria-live="polite"></div>
+      <div class="more-wrap"><button id="more" class="btn-outline">Ver más</button></div>
+    </div>
+  </section>
+
+  <!-- Cómo funciona -->
+  <section id="como" class="how">
+    <img src="/static/img/estilista.jpg" alt="Modelo con traje">
+    <div class="how-copy">
+      <p class="eyebrow">Detrás del estilista</p>
+      <h2>Cómo <em>funciona</em></h2>
+      <ol class="steps">
+        <li><b>Mira tu prenda.</b> Fashion-CLIP convierte la foto en un vector de 512 números; un modelo de visión
+          describe tipo, color y estilo.</li>
+        <li><b>Entiende lo que pides.</b> Un modelo de lenguaje traduce tu mensaje a una búsqueda; el código valida
+          cada filtro contra el catálogo.</li>
+        <li><b>Busca prendas parecidas</b> por similitud visual entre los ~29 mil artículos disponibles.</li>
+        <li><b>Arma el outfit</b> con complementos que la gente compró junta (filtrado colaborativo sobre millones de
+          transacciones), sin ropa interior ni calcetines y respetando el estilo que pediste.</li>
+        <li><b>Te lo explica.</b> El estilista redacta la respuesta citando solo prendas recuperadas; cualquier
+          artículo inventado se descarta antes de mostrarse.</li>
+      </ol>
+      <button class="btn-dark" data-open-chat>Pruébalo</button>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-cols">
+    <div>
+      <a class="logo logo-light" href="#top">H<i>y</i>M</a>
+      <p>Estilista virtual con recuperación de imágenes, filtrado colaborativo y un modelo de lenguaje local.</p>
+    </div>
+    <div><h5>Comprar</h5>
+      <a href="#catalogo" data-linea="mujer">Mujer</a><a href="#catalogo" data-linea="hombre">Hombre</a>
+      <a href="#catalogo" data-linea="divided">Divided</a><a href="#catalogo" data-linea="ninos">Niños</a></div>
+    <div><h5>Proyecto</h5>
+      <a href="https://github.com/valentinaacruz/hm-stylist" target="_blank" rel="noopener">Repositorio</a>
+      <a href="https://www.kaggle.com/competitions/h-and-m-personalized-fashion-recommendations" target="_blank" rel="noopener">Dataset</a>
+      <a href="#como">Cómo funciona</a></div>
+    <div><h5>Tecnología</h5><span>Fashion-CLIP</span><span>ALS y co-compras</span><span>FastAPI</span><span id="footer-llm">LLM local</span></div>
+  </div>
+  <p class="disclaimer">HyM es un proyecto académico (Datos Masivos). Las imágenes y datos de producto provienen del
+    dataset público <i>H&amp;M Personalized Fashion Recommendations</i> (Kaggle). Sin relación con H&amp;M; no se vende nada.</p>
+</footer>
+
+<!-- Panel del estilista -->
+<div class="overlay" id="overlay" hidden></div>
+<aside class="chat" id="chat" aria-label="Estilista virtual" aria-hidden="true">
+  <div class="chat-head">
+    <div>
+      <p class="chat-title">Tu estilista</p>
+      <p class="chat-sub" id="chat-sub">HyM · IA</p>
+    </div>
+    <div class="chat-actions">
+      <button id="nueva" class="icon-btn" title="Nueva conversación" aria-label="Nueva conversación">
+        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/></svg></button>
+      <button id="cerrar" class="icon-btn" title="Cerrar" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+  </div>
+  <div class="chat-body" id="mensajes"></div>
+  <form class="chat-form" id="chat-form">
+    <div class="adjunto" id="adjunto" hidden>
+      <img id="adjunto-img" alt="Foto adjunta">
+      <span>Foto lista para enviar</span>
+      <button type="button" id="quitar" class="icon-btn" aria-label="Quitar foto">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="chat-row">
+      <label class="icon-btn attach" title="Subir foto de una prenda">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="1"/><circle cx="12" cy="13" r="4"/><path d="M8 6l2-3h4l2 3"/></svg>
+        <input type="file" id="archivo" accept="image/*" hidden>
+      </label>
+      <textarea id="texto" rows="1" placeholder="Escribe o sube una foto…" aria-label="Mensaje"></textarea>
+      <button class="send" id="enviar" aria-label="Enviar">
+        <svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+    </div>
+  </form>
+</aside>
+
+<template id="tpl-card">
+  <article class="card">
+    <div class="card-img">
+      <img loading="lazy" alt="">
+      <div class="card-actions">
+        <button data-accion="similar">Similares</button>
+        <button data-accion="combinar">Combinar</button>
+      </div>
+    </div>
+    <h3 class="card-name"></h3>
+    <p class="card-meta"></p>
+  </article>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

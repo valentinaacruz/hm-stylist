@@ -3,3 +3,6 @@ __pycache__/
 data/
 kaggle/_runs/
 kaggle/_staging/
+hm-demo-data/
+*.zip
+.venv/

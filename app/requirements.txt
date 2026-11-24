@@ -1,0 +1,11 @@
+# App de la demo (Fase 7). PyTorch CPU se instala aparte (ver GUIA_EXPOSICION.txt):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+numpy
+pandas
+pyarrow
+pillow
+transformers>=4.40
+openai>=1.30

@@ -59,8 +59,10 @@ class LLM:
         self.model = model or os.environ.get("LLM_MODEL", DEFAULT_MODEL)
         self.vision = vision if vision is not None else os.environ.get("LLM_VISION", "1") != "0"
         self.client = OpenAI(base_url=self.base_url, api_key=api_key or os.environ.get("LLM_API_KEY", "local"),
-                             timeout=timeout)
+                             timeout=timeout, max_retries=1)
+        self._down_until = 0.0   # "cortacircuitos": tras un fallo, 30 s sin intentar (respuesta inmediata)
         self.json_mode = True   # se apaga solo si el servidor no soporta response_format
+        self.last_error = None
         # Sin razonamiento (llama.cpp / Lemonade lo aceptan vía chat_template_kwargs); se apaga si el servidor falla
         self.extra_body = ({"chat_template_kwargs": {"enable_thinking": False}}
                            if os.environ.get("LLM_THINKING") == "0" else None)
@@ -91,15 +93,37 @@ class LLM:
         return strip_thinking(r.choices[0].message.content), time.perf_counter() - t
 
     def chat_json(self, messages, **kw):
-        """Devuelve (dict o None, segundos). Reintenta una vez si la respuesta no es JSON válido."""
-        total = 0.0
+        """Devuelve (dict o None, segundos). Reintenta una vez si la respuesta no es JSON válido.
+        Si el servidor no responde, devuelve None (el estilista sigue en modo de respaldo) y guarda el error."""
+        total, t = 0.0, time.perf_counter()
+        if time.time() < self._down_until:      # falló hace poco: no esperar otra vez a que falle
+            return None, 0.0
         for _ in range(2):
-            text, s = self.chat(messages, json_mode=True, **kw)
+            try:
+                text, s = self.chat(messages, json_mode=True, **kw)
+            except Exception as e:     # servidor apagado, modelo no cargado, timeout...
+                self.last_error = f"{type(e).__name__}: {e}"
+                self._down_until = time.time() + 30
+                return None, time.perf_counter() - t
             total += s
             obj = parse_json(text)
             if obj is not None:
+                self.last_error = None
                 return obj, total
         return None, total
+
+    def ping(self):
+        """True si el servidor responde y conoce el modelo configurado."""
+        try:
+            ids = [m.id for m in self.client.models.list().data]
+            self.last_error = None if self.model in ids else f"El modelo {self.model} no está en el servidor: {ids}"
+            if self.model in ids:
+                self._down_until = 0.0
+            return self.model in ids
+        except Exception as e:
+            self.last_error = f"{type(e).__name__}: {e}"
+            self._down_until = time.time() + 30
+            return False
 
     def ask(self, prompt, image=None, system=None, **kw):
         """Atajo: un mensaje de usuario (con imagen opcional) → JSON."""

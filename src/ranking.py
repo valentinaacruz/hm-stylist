@@ -105,7 +105,7 @@ class Recommender:
     # ---------- recomendación ----------
     def recommend(self, q, q_anchor=None, filters=None, exclude=None, k=6, n_anchors=3,
                   kinds=("similar", "complemento"), filter_kinds=("similar",), comp_exclude_groups=(),
-                  style_vec=None, style_w=0.5):
+                  style_vec=None, style_w=0.5, anchor_group=None, comp_max_per_group=None):
         """
         q: vector de búsqueda (imagen, texto o suma normalizada de ambos).
         q_anchor: vector para elegir las anclas de los complementos (por defecto q). Con imagen subida conviene
@@ -113,6 +113,8 @@ class Recommender:
         filters / exclude: {columna de articles: [valores]}; se aplican a los tipos en `filter_kinds`.
         comp_exclude_groups: grupos de producto que no se proponen como complemento (p. ej. ropa interior).
         style_vec: vector de texto del estilo pedido ("formal"); re-ordena los complementos por afinidad visual a él.
+        anchor_group: si se da, las anclas solo pueden ser de ese grupo (p. ej. los jeans de una foto de cuerpo entero).
+        comp_max_per_group: máximo de complementos por grupo de producto (outfit variado: zapatos, accesorios...).
         Devuelve (DataFrame, latencias). Columnas: tipo ('similar' | 'complemento'), article_id, score, sim, cop,
         pop, ancla (para complementos: con qué artículo combina) y metadatos.
         """
@@ -124,6 +126,8 @@ class Recommender:
         ok_all[self.avail] = ok
 
         a_sims = sims if q_anchor is None else self.E @ q_anchor
+        if anchor_group and (cat.pgroup[self.avail] == anchor_group).sum() >= n_anchors:
+            a_sims = np.where(cat.pgroup[self.avail] == anchor_group, a_sims, -np.inf)
         a_order = np.argsort(-a_sims)[:n_anchors]
         anchors = self.avail[a_order]                                   # qué es la prenda (sin filtros)
         out = []
@@ -161,7 +165,12 @@ class Recommender:
             if tipo == "complemento" and style_vec is not None:
                 d["score"] += style_w * minmax(cat.emb[d.i.to_numpy()] @ style_vec)
             d = d.sort_values("score", ascending=False)
-            d = d[~pd.Series(cat.pcode[d.i]).duplicated().to_numpy()].head(k)    # un artículo por producto
+            d = d[~pd.Series(cat.pcode[d.i]).duplicated().to_numpy()]            # un artículo por producto
+            if tipo == "complemento" and comp_max_per_group:
+                g = pd.Series(cat.pgroup[d.i.to_numpy()], index=d.index)
+                varied = d[(g.groupby(g).cumcount() < comp_max_per_group).to_numpy()]
+                d = varied if len(varied) >= min(k, len(d)) else pd.concat([varied, d.drop(varied.index)])
+            d = d.head(k)
             res.append(d.assign(tipo=tipo))
         cols = ["tipo", "article_id", "score", "sim", "cop", "pop", "ancla"] + list(self.meta.columns[1:])
         if not res:

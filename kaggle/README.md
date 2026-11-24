@@ -25,6 +25,7 @@ ejecuta el notebook y lo guarda ya ejecutado en `/kaggle/working`.
 | `hm-stylist-src/dataset-metadata.json` | Dataset privado con `src/*.py` y el notebook a ejecutar |
 | `06-rag-y-chat-estilista/kernel-metadata.json` | Kernel del 06: inputs (competencia, 01, 03, 04, src), GPU e Internet |
 | `run_notebook.py` | Ejecutor: corre el notebook con nbconvert y falla si alguna celda da error |
+| `07-exportar-demo/` | Kernel del 07 (CPU): arma `hm-demo-data.zip` para la app; su propio `run_notebook.py` apunta al 07 |
 | `_staging/`, `_runs/` | Temporales (ignorados por git) |
 
 ## Comandos (desde la raíz del repo; el CLI necesita rutas absolutas)
