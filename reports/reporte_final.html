@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>HyM: un estilista virtual multimodal</title>
+<style>
+  @page { size: A4; margin: 2.2cm 2.3cm 2.2cm 2.3cm; }
+  :root { color-scheme: light; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; line-height: 1.38; color: #111; background: #fff;
+         max-width: 16.4cm; margin: 0 auto; text-align: justify; hyphens: auto; }
+  h1 { font-size: 16.5pt; text-align: center; margin: 0 0 14pt; line-height: 1.25; font-weight: bold; }
+  .authors { display: flex; justify-content: center; gap: 34pt; text-align: center; margin-bottom: 6pt; }
+  .authors div { font-size: 10.5pt; } .authors b { display: block; }
+  .affil { text-align: center; font-size: 10pt; margin-bottom: 20pt; }
+  .abstract { margin: 0 1.4cm 16pt; }
+  .abstract h2 { text-align: center; font-size: 11.5pt; margin: 0 0 6pt; }
+  .abstract p { font-size: 10pt; }
+  h2 { font-size: 12pt; margin: 16pt 0 6pt; }
+  h3 { font-size: 10.8pt; margin: 11pt 0 4pt; }
+  p { margin: 0 0 7pt; }
+  ul { margin: 0 0 7pt; padding-left: 18pt; } li { margin-bottom: 3pt; }
+  figure { margin: 10pt 0 12pt; text-align: center; break-inside: avoid; }
+  figure img { max-width: 100%; }
+  figcaption, .tcap { font-size: 9.5pt; text-align: justify; margin-top: 5pt; }
+  .tcap { margin: 10pt 0 4pt; }
+  table { border-collapse: collapse; margin: 0 auto 10pt; font-size: 9.5pt; break-inside: avoid; }
+  th, td { padding: 2.5pt 9pt; text-align: center; }
+  td:first-child, th:first-child { text-align: left; }
+  thead tr { border-top: 1.2pt solid #111; border-bottom: 0.7pt solid #111; }
+  tbody tr:last-child { border-bottom: 1.2pt solid #111; }
+  tr.best td { font-weight: bold; }
+  h2, h3 { break-after: avoid; page-break-after: avoid; }
+  .tbl { break-inside: avoid; page-break-inside: avoid; }
+  .eq { text-align: center; margin: 6pt 0 8pt; font-style: italic; }
+  .refs p { font-size: 9.3pt; padding-left: 18pt; text-indent: -18pt; margin-bottom: 4pt; text-align: left; }
+  .row { display: flex; gap: 12pt; align-items: flex-start; }
+  .row > * { flex: 1; }
+  code { font-family: "Courier New", monospace; font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<h1>HyM: un estilista virtual multimodal con recuperación visual,<br>filtrado colaborativo y generación aumentada por recuperación</h1>
+
+<div class="authors">
+  <div><b>Angel Noel Pérez Martínez</b></div>
+  <div><b>Valentina Ayelen Cruz Mendoza</b></div>
+  <div><b>Isaac Monroy Villegas</b></div>
+</div>
+<p class="affil">Datos Masivos · Instituto de Investigaciones en Matemáticas Aplicadas y en Sistemas (IIMAS), UNAM</p>
+
+<div class="abstract">
+<h2>Resumen</h2>
+<p>Presentamos HyM, un estilista virtual que recibe la foto de una prenda, un mensaje en lenguaje natural o ambos, y responde
+con prendas del catálogo de H&amp;M parecidas a la que el usuario busca y con otras que combinan con ella. El sistema une tres
+componentes. Los embeddings multimodales de Fashion-CLIP permiten buscar por imagen y por texto en un mismo espacio. El
+filtrado colaborativo sobre 31.8 millones de transacciones aporta la señal de qué prendas se compran juntas. Por último, una
+capa de generación aumentada por recuperación (RAG) usa un modelo de lenguaje multimodal para interpretar la petición y
+redactar la respuesta, citando únicamente artículos que fueron recuperados del catálogo. En la tarea de predecir las compras de
+la semana siguiente, la fusión de señales alcanza un MAP@12 de 0.0281, un 7.7 % por encima del mejor baseline. En un conjunto
+fijo de conversaciones de prueba, el 97 % de los artículos mostrados cumple lo que pidió el usuario y ninguno es inventado. El
+sistema completo corre en una laptop con un modelo de lenguaje local, sin depender de servicios externos.</p>
+</div>
+
+<h2>1 Introducción</h2>
+<p>Los sistemas de recomendación de moda suelen resolver una tarea concreta, que es predecir qué va a comprar cada cliente a
+partir de su historial. Así está planteada, por ejemplo, la competencia <i>H&amp;M Personalized Fashion Recommendations</i>
+[7]. Sin embargo, una persona que busca ropa normalmente no piensa en su historial sino en una prenda que ya tiene o que vio en
+algún lado, y quiere saber qué hay parecido o con qué combinarla. Esa pregunta se responde mejor con una conversación que con
+una lista fija de recomendaciones.</p>
+<p>Los modelos de lenguaje actuales hacen posible esa conversación, pero por sí solos tienen un problema importante para un
+catálogo real, ya que tienden a inventar productos, marcas o características que no existen. Por eso en este proyecto el modelo
+de lenguaje no decide qué recomendar. Su papel es entender lo que pide el usuario y explicar los resultados, mientras que la
+selección de prendas la hacen componentes que sí se pueden medir, como la similitud visual y las compras reales.</p>
+<p>Las contribuciones del trabajo son las siguientes.</p>
+<ul>
+  <li>Un sistema de recomendación que combina recuperación visual con Fashion-CLIP, co-compras y ALS, evaluado con MAP@12
+    y con un análisis de ablación sobre clientes que no se usaron para ajustar los pesos.</li>
+  <li>Una capa conversacional en la que el modelo de lenguaje solo llena campos estructurados y el código valida cada campo
+    contra el mensaje y contra el catálogo antes de buscar.</li>
+  <li>Un protocolo de evaluación automática del chat que mide, turno por turno, si los artículos mostrados cumplen la
+    petición, si se inventó algún artículo y cuánto tarda cada etapa.</li>
+  <li>Una aplicación web que corre de forma local, con un modelo de lenguaje servido en la propia laptop y un paquete de
+    datos de 494 MB derivado de un dataset de decenas de gigabytes.</li>
+</ul>
+
+<h2>2 Trabajo relacionado</h2>
+<p><b>Representaciones multimodales.</b> CLIP [1] entrena un codificador de imágenes y uno de texto para que una foto y su
+descripción queden cerca en el mismo espacio vectorial. Fashion-CLIP [2] ajusta ese modelo con unos 800 mil productos de moda y
+mejora la búsqueda de prendas por texto. Como los vectores están normalizados, buscar prendas parecidas se reduce a un producto
+punto, que puede resolverse de forma exacta o aproximada con bibliotecas como FAISS [8].</p>
+<p><b>Filtrado colaborativo.</b> Con retroalimentación implícita, como las compras, el método ALS de Hu, Koren y Volinsky [3]
+factoriza la matriz de clientes por artículos y es la base de la biblioteca <code>implicit</code> [10]. Antes de
+factorizar es común ponderar la matriz con BM25 [5], que reduce el peso de los artículos que compra casi todo el mundo.
+Para relacionar
+artículos entre sí, el enfoque artículo a artículo de Amazon [4] cuenta cuántas veces se compran juntos. En la competencia de
+H&amp;M [7] los enfoques más simples, como recomendar lo que el cliente ya compró y lo más vendido, resultaron difíciles de
+superar, y por eso los usamos como referencia.</p>
+<p><b>Generación aumentada por recuperación.</b> RAG [6] condiciona la respuesta de un modelo de lenguaje a documentos
+recuperados, lo que reduce las respuestas inventadas. En nuestro caso los documentos son fichas de producto y el modelo es
+multimodal, de la familia Qwen [9, 11], así que también puede describir la imagen que sube el usuario.</p>
+
+<h2>3 Datos</h2>
+<p>Usamos el dataset público de la competencia de H&amp;M [7], que contiene 105,542 artículos con sus metadatos y fotos, 1.37
+millones de clientes y 31.8 millones de transacciones entre septiembre de 2018 y septiembre de 2020. Solo 442 artículos no
+tienen imagen y la única columna con datos faltantes es la descripción. Para cada artículo construimos un texto que une
+nombre, tipo de prenda, color, apariencia, sección y descripción.</p>
+<p>La partición es temporal, ya que la última semana de transacciones (240 mil compras de 68,984 clientes) queda como
+validación y todo lo anterior como entrenamiento. Separar por fecha evita que el modelo vea compras del futuro. Para trabajar
+con rapidez, los experimentos usan las últimas 12 semanas de entrenamiento, que suman 3.66 millones de transacciones. Como el
+dataset no incluye inventario, definimos el catálogo disponible como los artículos con imagen que se vendieron en las últimas
+cuatro semanas de entrenamiento. Son 28,966 artículos y cubren cerca del 96 % de las compras de validación, por lo que todas
+las recomendaciones salen de ese conjunto.</p>
+
+<h2>4 Arquitectura del sistema</h2>
+<p>La Figura 1 resume el sistema. La parte fuera de línea se calcula una sola vez en Kaggle y produce los embeddings, la tabla
+de co-compras y los factores de ALS. La parte en línea atiende cada turno de la conversación y es la que corre en la
+aplicación.</p>
+<figure>
+  <img src="figs/arquitectura.svg" alt="Arquitectura de HyM" style="width:100%">
+  <figcaption><b>Figura 1.</b> Arquitectura de HyM. Los artefactos fuera de línea (azul) alimentan la búsqueda de similares
+  y de complementos. El modelo de lenguaje (naranja) solo interpreta el mensaje y redacta la respuesta, y antes de mostrarla el
+  código valida que cada artículo citado haya sido recuperado.</figcaption>
+</figure>
+
+<h3>4.1 Representación visual y textual</h3>
+<p>Calculamos con Fashion-CLIP (ViT-B/32) un vector de 512 dimensiones para la imagen y otro para el texto de cada artículo.
+Las fotos de H&amp;M son verticales, así que en lugar de recortarlas las rellenamos con blanco hasta hacerlas cuadradas, para
+no cortar la prenda. Los 105,100 embeddings de imagen tardan unos 13 minutos en una GPU T4. Como índice usamos directamente la
+matriz de embeddings y una búsqueda exacta por producto punto, que con este tamaño responde en unos 20 milisegundos. Un índice
+aproximado no se justifica con poco más de cien mil vectores.</p>
+
+<h3>4.2 Complementariedad a partir de co-compras</h3>
+<p>El dataset no tiene sesiones de compra, por lo tanto definimos una canasta como las compras de un cliente en un mismo día y
+descartamos las de más de 30 artículos, que suelen ser de revendedores. Con la matriz binaria <i>B</i> de canastas por
+artículos, la matriz de co-compras es <i>C</i> = <i>B</i><sup>T</sup><i>B</i>, donde <i>C<sub>ij</sub></i> cuenta las
+canastas que contienen a la vez los artículos <i>i</i> y <i>j</i>. Consideramos que <i>j</i> complementa a <i>i</i> si
+pertenece a otro grupo de producto y a la misma línea (mujer, hombre, niños), y guardamos los 50 mejores complementos de cada
+artículo. Para las prendas sin co-compras usamos como respaldo los artículos más vendidos de los grupos complementarios.</p>
+
+<h3>4.3 Fusión de señales para un cliente</h3>
+<p>Para predecir las compras de un cliente generamos candidatos con cinco señales, que son recompra, co-compra con sus
+últimas compras, similitud visual con ellas, ALS y popularidad. Como sus escalas no son comparables, cada señal
+<i>x<sub>k</sub></i> se normaliza entre 0 y 1 dentro de cada cliente, y el puntaje final es</p>
+<p class="eq">s(u, i) = Σ<sub>k</sub> w<sub>k</sub> · x̂<sub>k</sub>(u, i).</p>
+<p>Los pesos <i>w<sub>k</sub></i> se ajustan por ascenso por coordenadas sobre una mitad de los clientes de validación, y
+los resultados se reportan sobre la otra mitad.</p>
+
+<h3>4.4 Capa conversacional con RAG</h3>
+<p>En el chat el punto de partida no es un cliente sino una consulta. Cada turno sigue cinco pasos.</p>
+<ul>
+  <li><b>Análisis de imagen.</b> Si el usuario sube una foto, Fashion-CLIP calcula su vector y la probabilidad de que sea
+    ropa por comparación con textos como <i>a photo of clothing</i>. El modelo multimodal describe además tipo de prenda,
+    color y estilo. La imagen se rechaza solo si los dos coinciden en que no es moda.</li>
+  <li><b>Planificación.</b> El modelo de lenguaje convierte el mensaje en campos fijos, que son intención (similares,
+    complementos o aclaración), prenda y estilo en inglés, color, línea y tipo de complemento. El código acepta un color solo
+    si el mensaje menciona alguno, hereda los campos que no cambian en un refinamiento como "más formal" y arma la consulta
+    en inglés para Fashion-CLIP.</li>
+  <li><b>Recuperación.</b> Los similares salen del índice visual, sumando el vector de la foto y el del texto cuando hay
+    ambos. Los complementos salen de las co-compras de las prendas del catálogo más parecidas a la del usuario. Sobre ellos
+    aplicamos reglas de sentido común, ya que no proponemos ropa interior, calcetines ni pijamas, no combinamos un vestido con
+    pantalones, limitamos a dos los complementos del mismo tipo y damos prioridad al estilo pedido. Si los filtros dejan menos
+    de tres resultados, se relajan de forma gradual.</li>
+  <li><b>Redacción.</b> El modelo recibe las fichas de los candidatos y escribe la respuesta citando cada artículo por su
+    identificador.</li>
+  <li><b>Validación.</b> Cualquier identificador que no esté entre los candidatos se elimina, igual que las frases que
+    mencionan marcas ajenas al catálogo. Los avisos sobre artículos o marcas inexistentes los escribe el código y no el
+    modelo.</li>
+</ul>
+<p>Esta división de trabajo es la decisión de diseño más importante del proyecto. El modelo de lenguaje aporta comprensión
+del lenguaje y redacción, pero nunca elige por su cuenta qué artículo mostrar.</p>
+
+<h3>4.5 Implementación y despliegue</h3>
+<p>Los notebooks se ejecutan en Kaggle mediante su interfaz de línea de comandos, de modo que los datos pesados nunca salen de
+la plataforma. El código del chat está en un módulo de Python que comparten los notebooks y la aplicación. Para la evaluación
+en Kaggle usamos el modelo Qwen2.5-VL de 7B [9] servido con Ollama en una GPU T4. La aplicación final es un servidor FastAPI
+con una interfaz web propia y corre en una laptop con procesador AMD Ryzen AI Max+ 392 y 64 GB de memoria unificada. Ahí el
+modelo de lenguaje es Qwen3.6-35B-A3B [11], un modelo de mezcla de expertos con capacidad de visión servido localmente con
+Lemonade, y Fashion-CLIP corre en el procesador. Todo lo que necesita la aplicación cabe en un paquete de 494 MB con los
+metadatos, los embeddings, los complementos y miniaturas de las 28,966 prendas disponibles.</p>
+
+<h2>5 Resultados</h2>
+
+<h3>5.1 Recomendación por cliente</h3>
+<p>La Tabla 1 compara los baselines con la fusión de señales sobre la mitad de los clientes que no se usó para ajustar los
+pesos. La fusión obtiene el mejor MAP@12 y el mejor recall@12. La mejora sobre la recompra con popularidad es de 7.7 % en
+MAP@12 y de 15 % en recall@12.</p>
+<div class="tbl"><p class="tcap"><b>Tabla 1.</b> Predicción de compras de la semana de validación (34,492 clientes de la mitad B).</p>
+<table>
+  <thead><tr><th>Método</th><th>MAP@12</th><th>Recall@12</th></tr></thead>
+  <tbody>
+    <tr><td>Popularidad de la última semana</td><td>0.0085</td><td>0.0253</td></tr>
+    <tr><td>Solo similitud visual</td><td>0.0052</td><td>0.0165</td></tr>
+    <tr><td>Solo co-compra</td><td>0.0132</td><td>0.0350</td></tr>
+    <tr><td>Solo ALS</td><td>0.0150</td><td>0.0373</td></tr>
+    <tr><td>Recompra + popularidad (mejor baseline)</td><td>0.0261</td><td>0.0529</td></tr>
+    <tr class="best"><td>Fusión con pesos ajustados</td><td>0.0281</td><td>0.0610</td></tr>
+  </tbody>
+</table></div>
+<p>El análisis de ablación de la Figura 2 muestra que la recompra es la señal dominante, ya que al quitarla el MAP@12 cae a
+0.0141. La siguiente en importancia es la co-compra. La similitud visual casi no cambia el MAP@12, lo cual era de esperarse,
+porque predecir recompras no es su función. Su valor aparece en el chat, donde la consulta es una prenda nueva y no el
+historial del cliente. También medimos el techo de esta etapa, que es la fracción de compras reales que quedó entre los
+candidatos. Fue de 11.7 % para los clientes con historial, lo que acota cuánto puede mejorar cualquier ajuste de pesos.</p>
+<figure>
+  <img src="figs/ablacion.png" alt="Ablación" style="width:78%">
+  <figcaption><b>Figura 2.</b> MAP@12 de cada señal por separado, de la fusión y de la fusión sin cada señal. La línea
+  punteada marca el mejor baseline.</figcaption>
+</figure>
+
+<h3>5.2 Recuperación visual y textual</h3>
+<p>Para evaluar los embeddings usamos los metadatos como referencia. Para 2,000 artículos al azar medimos qué fracción de sus
+10 vecinos más cercanos comparte el tipo de prenda y el color, sin contar variantes del mismo producto. La Tabla 2 muestra que
+la búsqueda de texto a imagen, que es la que usa el chat, acierta el tipo y el color en el 88 % de los casos, frente a menos
+del 10 % al azar. De imagen a imagen el tipo coincide en el 73 %, ya que prendas muy parecidas pueden tener etiquetas
+distintas, como un suéter y un cárdigan.</p>
+<div class="tbl"><p class="tcap"><b>Tabla 2.</b> Fracción de los 10 vecinos que comparte tipo de prenda y color con la consulta.</p>
+<table>
+  <thead><tr><th>Búsqueda</th><th>Tipo@10</th><th>Color@10</th><th>Tipo y color@10</th></tr></thead>
+  <tbody>
+    <tr><td>Imagen a imagen</td><td>0.728</td><td>0.457</td><td>0.333</td></tr>
+    <tr><td>Texto a texto</td><td>0.842</td><td>0.814</td><td>0.685</td></tr>
+    <tr class="best"><td>Texto a imagen (30 consultas)</td><td>0.877</td><td>0.883</td><td>n/d</td></tr>
+    <tr><td>Azar</td><td>0.047</td><td>0.082</td><td>0.005</td></tr>
+  </tbody>
+</table></div>
+
+<h3>5.3 Complementos</h3>
+<p>Evaluamos los complementos con las canastas reales de la semana de validación. Para cada artículo de una canasta medimos
+qué fracción de los demás artículos de esa canasta aparece entre sus 12 complementos. Como muestra la Tabla 3, el conteo
+directo de co-compras supera a la popularidad y a la similitud coseno, y el respaldo para prendas sin historial sube un poco
+el recall al cubrir el 100 % del catálogo con imagen.</p>
+<div class="tbl"><p class="tcap"><b>Tabla 3.</b> Recall@12 de co-compras reales en la semana de validación.</p>
+<table>
+  <thead><tr><th>Método</th><th>Complementos</th><th>General</th></tr></thead>
+  <tbody>
+    <tr><td>Popularidad del mismo grupo</td><td>0.0754</td><td>0.0220</td></tr>
+    <tr><td>Co-compra, similitud coseno</td><td>0.0755</td><td>0.0966</td></tr>
+    <tr><td>Co-compra, conteo directo</td><td>0.1034</td><td>0.1174</td></tr>
+    <tr class="best"><td>Conteo directo con respaldo de arranque en frío</td><td>0.1053</td><td>n/d</td></tr>
+  </tbody>
+</table></div>
+
+<h3>5.4 Chat estilista</h3>
+<p><b>Calibración.</b> Para fijar los umbrales de los casos límite comparamos 300 prendas reales de H&amp;M fuera del catálogo
+disponible con imágenes que no son ropa (Figura 3). La probabilidad de moda separa los dos grupos con 99.7 % de exactitud
+usando un umbral de 0.6. La similitud máxima con el catálogo sirve para avisar cuando una prenda no tiene un equivalente
+cercano, con un umbral de 0.763.</p>
+<figure>
+  <img src="figs/calibracion.png" alt="Calibración" style="width:88%">
+  <figcaption><b>Figura 3.</b> Similitud máxima con el catálogo disponible y probabilidad de moda para prendas reales fuera
+  del catálogo (naranja) y para imágenes que no son ropa (azul). Las líneas punteadas son los umbrales elegidos.</figcaption>
+</figure>
+<p><b>Atributos de la imagen.</b> Sobre 30 artículos al azar, el modelo multimodal de 7B identificó el tipo de prenda en el
+67 % de los casos y el color en el 60 %, valores cercanos a los de la votación de vecinos visuales (73 % y 57 %). Reconoció
+como no moda el 100 % de las imágenes que no son ropa, aunque marcó como no moda 2 de 30 prendas, ambas de ropa interior. Por
+eso la decisión final combina al modelo con Fashion-CLIP.</p>
+<p><b>Conversaciones.</b> Definimos un conjunto fijo de seis escenarios con doce turnos, que incluye búsquedas con foto y con
+texto, refinamientos como "en negro", "más formal" y "en otro color", una consulta ambigua, una imagen que no es ropa y un
+intento de que el modelo rompa sus reglas pidiendo un identificador inventado y una marca ajena. Para cada turno escribimos lo
+que debe cumplirse, por ejemplo que todos los artículos sean vestidos negros, y lo verificamos de forma automática. La Tabla 4
+resume los resultados.</p>
+<div class="tbl"><p class="tcap"><b>Tabla 4.</b> Evaluación automática del chat (12 turnos, Qwen2.5-VL 7B).</p>
+<table>
+  <thead><tr><th>Métrica</th><th>Resultado</th></tr></thead>
+  <tbody>
+    <tr><td>Artículos que cumplen la petición (promedio por turno)</td><td>97.2 %</td></tr>
+    <tr><td>Turnos que cumplen al 100 %</td><td>11 de 12</td></tr>
+    <tr><td>Complementos que no son básicos (ropa interior, calcetines, pijamas)</td><td>100 %</td></tr>
+    <tr><td>Artículos inventados mostrados al usuario</td><td>0</td></tr>
+    <tr><td>Casos límite resueltos (aclaración, no es moda, ID y marca inexistentes)</td><td>3 de 3</td></tr>
+  </tbody>
+</table></div>
+<p>El único turno incompleto fue "¿y unos zapatos cafés que combinen?", con 67 %, porque las co-compras contienen pocos
+zapatos cafés de hombre y parte de la lista se completó con otros colores. La Figura 4 muestra un ejemplo con la foto de un
+vestido, para el que el sistema propone un abrigo, una blusa, dos pares de botas, una diadema y aretes, todos tomados de
+compras reales y filtrados por las reglas de outfit.</p>
+<figure>
+  <img src="figs/chat_vestido.png" alt="Ejemplo del chat" style="width:100%">
+  <figcaption><b>Figura 4.</b> Respuesta a "¿Con qué puedo combinar este vestido?". La primera imagen es la foto del
+  usuario y las demás son los complementos que propone el estilista.</figcaption>
+</figure>
+
+<h3>5.5 Latencia</h3>
+<p>En la evaluación sobre una GPU T4, un turno completo tarda en promedio 9.8 segundos. Casi todo ese tiempo corresponde al
+modelo de lenguaje, ya que la redacción toma 8.0 segundos y el análisis de la imagen 3.9, mientras que la recuperación de
+similares, complementos y el re-ranking suman menos de 0.2 segundos. En el procesador de la laptop, sin contar el modelo de
+lenguaje, un turno con imagen tarda entre 0.2 y 0.35 segundos. Por lo tanto la velocidad de la aplicación depende sobre todo
+del modelo que se use para conversar.</p>
+<figure>
+  <img src="figs/interfaz.png" alt="Interfaz" style="width:100%">
+  <figcaption><b>Figura 5.</b> Interfaz de HyM. A la izquierda la portada, al centro el catálogo con las acciones para pedir
+  prendas parecidas o complementos de cualquier artículo, y a la derecha el panel del estilista en un celular.</figcaption>
+</figure>
+
+<h2>6 Discusión y limitaciones</h2>
+<p>Los resultados muestran que en este dataset la recompra explica la mayor parte de lo que se puede predecir, y que las
+señales de contenido como la similitud visual aportan poco a esa métrica. Esto no significa que no sirvan, sino que MAP@12 no
+mide la tarea del chat. Por eso evaluamos la capa conversacional con un protocolo propio, centrado en que lo mostrado cumpla
+la petición y exista en el catálogo.</p>
+<p>La co-compra refleja hábitos reales pero no garantiza coherencia de estilo, ya que la gente también compra junto lo que no
+se pone junto. Las reglas de outfit corrigen los casos más evidentes, aunque no sustituyen a un modelo que aprenda la
+compatibilidad entre prendas. Además, los umbrales se calibraron con fotos de producto con fondo blanco, y una foto tomada con
+celular produce similitudes menores, por lo que el aviso de prenda fuera de catálogo aparece con más frecuencia. El catálogo
+corresponde a H&amp;M en 2020 y no incluye tallas, precios ni inventario. Finalmente, el conjunto de conversaciones es
+pequeño y una evaluación con usuarios reales daría una medida más completa de la utilidad del sistema.</p>
+
+<h2>7 Conclusiones</h2>
+<p>HyM muestra que es posible construir un estilista conversacional que no inventa productos, siempre que el modelo de
+lenguaje se limite a interpretar y redactar y la selección de prendas quede en manos de componentes medibles. La fusión de
+recompra, co-compras, ALS y similitud visual supera al mejor baseline en la predicción de compras, la búsqueda multimodal
+acierta tipo y color en cerca del 88 % de los casos y el chat cumple la petición del usuario en el 97 % de los artículos que
+muestra, todo en una aplicación que corre de forma local. Como trabajo futuro proponemos entrenar un re-ranker con más
+variables, aprender la compatibilidad entre prendas para armar outfits completos y evaluar el sistema con usuarios.</p>
+
+<h2>Referencias</h2>
+<div class="refs">
+<p>[1] A. Radford, J. W. Kim, C. Hallacy et al. Learning transferable visual models from natural language supervision.
+<i>ICML</i>, 2021.</p>
+<p>[2] P. J. Chia, G. Attanasio, F. Bianchi et al. Contrastive language and vision learning of general fashion concepts.
+<i>Scientific Reports</i>, 12, 18958, 2022.</p>
+<p>[3] Y. Hu, Y. Koren y C. Volinsky. Collaborative filtering for implicit feedback datasets. <i>IEEE ICDM</i>, 2008.</p>
+<p>[4] G. Linden, B. Smith y J. York. Amazon.com recommendations. Item-to-item collaborative filtering. <i>IEEE Internet
+Computing</i>, 7(1), 2003.</p>
+<p>[5] S. Robertson y H. Zaragoza. The probabilistic relevance framework. BM25 and beyond. <i>Foundations and Trends in
+Information Retrieval</i>, 3(4), 2009.</p>
+<p>[6] P. Lewis, E. Perez, A. Piktus et al. Retrieval-augmented generation for knowledge-intensive NLP tasks.
+<i>NeurIPS</i>, 2020.</p>
+<p>[7] H&amp;M Group. H&amp;M Personalized Fashion Recommendations. Competencia de Kaggle, 2022.</p>
+<p>[8] J. Johnson, M. Douze y H. Jégou. Billion-scale similarity search with GPUs. <i>IEEE Transactions on Big Data</i>,
+2019.</p>
+<p>[9] S. Bai et al. Qwen2.5-VL technical report. arXiv:2502.13923, 2025.</p>
+<p>[10] B. Frederickson. implicit. Fast Python collaborative filtering for implicit datasets. GitHub, 2017.</p>
+<p>[11] Qwen Team. Qwen3 technical report. arXiv:2505.09388, 2025.</p>
+</div>
+
+</body>
+</html>

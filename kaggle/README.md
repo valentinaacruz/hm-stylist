@@ -26,22 +26,27 @@ ejecuta el notebook y lo guarda ya ejecutado en `/kaggle/working`.
 | `06-rag-y-chat-estilista/kernel-metadata.json` | Kernel del 06: inputs (competencia, 01, 03, 04, src), GPU e Internet |
 | `run_notebook.py` | Ejecutor: corre el notebook con nbconvert y falla si alguna celda da error |
 | `07-exportar-demo/` | Kernel del 07 (CPU): arma `hm-demo-data.zip` para la app; su propio `run_notebook.py` apunta al 07 |
+| `05-ranking/` | Kernel del 05 (CPU), para re-ejecutarlo con las imágenes de la competencia |
 | `_staging/`, `_runs/` | Temporales (ignorados por git) |
 
-## Comandos (desde la raíz del repo; el CLI necesita rutas absolutas)
+## Comandos (desde la raíz del repo)
+En Windows el CLI solo acepta rutas absolutas con diagonal invertida (`D:\...`). Con rutas relativas o con `/`
+la subida del dataset falla y Kaggle sigue usando la versión anterior sin avisar.
 ```bash
-# 1. Publicar código + notebook
-mkdir -p kaggle/_staging/hm-stylist-src
-cp src/*.py notebooks/06-rag-y-chat-estilista.ipynb kaggle/hm-stylist-src/dataset-metadata.json kaggle/_staging/hm-stylist-src/
-kaggle datasets version -p "$PWD/kaggle/_staging/hm-stylist-src" -m "descripción del cambio"
-kaggle datasets status angelnoelprezmartnez/hm-stylist-src        # esperar "ready"
+R='D:\Proyecto_Datos_Masivos_HM\hm-stylist'
 
-# 2. Ejecutar en Kaggle (~12 min con GPU T4)
-kaggle kernels push -p "$PWD/kaggle/06-rag-y-chat-estilista"
+# 1. Publicar código + notebooks (incluye todos los que se ejecutan con el CLI)
+mkdir -p kaggle/_staging/hm-stylist-src
+cp src/*.py notebooks/0[567]-*.ipynb kaggle/hm-stylist-src/dataset-metadata.json kaggle/_staging/hm-stylist-src/
+kaggle datasets version -p "$R\kaggle\_staging\hm-stylist-src" -m "descripción del cambio"
+kaggle datasets files angelnoelprezmartnez/hm-stylist-src         # confirmar que aparecen los archivos nuevos
+
+# 2. Ejecutar en Kaggle (05: ~15 min sin GPU · 06: ~12 min con GPU T4 · 07: ~10 min sin GPU)
+kaggle kernels push -p "$R\kaggle\06-rag-y-chat-estilista"
 kaggle kernels status angelnoelprezmartnez/06-rag-y-chat-estilista
 
 # 3. Bajar el notebook ejecutado y las salidas, y copiarlo a notebooks/
-kaggle kernels output angelnoelprezmartnez/06-rag-y-chat-estilista -p "$PWD/kaggle/_runs/06" -o
+kaggle kernels output angelnoelprezmartnez/06-rag-y-chat-estilista -p "$R\kaggle\_runs\06" -o
 cp kaggle/_runs/06/06-rag-y-chat-estilista.ipynb notebooks/
 ```
 Después se revisa el diff y se hace commit desde VS Code.

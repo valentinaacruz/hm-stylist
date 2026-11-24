@@ -1,0 +1,21 @@
+{
+  "id": "angelnoelprezmartnez/05-ranking",
+  "title": "05-ranking",
+  "code_file": "run_notebook.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": ["angelnoelprezmartnez/hm-stylist-src"],
+  "competition_sources": ["h-and-m-personalized-fashion-recommendations"],
+  "kernel_sources": [
+    "valentina3030/01-eda-dmii",
+    "valentina3030/02-baselines",
+    "isaacmov26/03-embeddings",
+    "isaacmov26/04-complementary"
+  ],
+  "model_sources": []
+}

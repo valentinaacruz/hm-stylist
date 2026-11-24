@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="Times New Roman, Times, serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#222"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#222;stroke-width:1.2}
+      .off{fill:#eef1f7;stroke:#1f3b73;stroke-width:1.2}
+      .llm{fill:#fff4e5;stroke:#a35a00;stroke-width:1.2}
+      .t{font-weight:bold;text-anchor:middle}
+      .s{font-size:11px;text-anchor:middle;fill:#333}
+      .ln{stroke:#222;stroke-width:1.2;fill:none;marker-end:url(#a)}
+      .dash{stroke:#1f3b73;stroke-width:1.1;fill:none;stroke-dasharray:5 4;marker-end:url(#a)}
+      .lab{font-size:12px;font-style:italic;fill:#1f3b73}
+    </style>
+  </defs>
+
+  <!-- Fuera de línea -->
+  <text x="20" y="22" class="lab">Fuera de línea (Kaggle, notebooks 01 a 05)</text>
+  <rect x="20" y="34" width="190" height="56" rx="4" class="off"/>
+  <text x="115" y="56" class="t">Transacciones</text><text x="115" y="74" class="s">31.8 M compras, 12 semanas</text>
+  <rect x="245" y="34" width="190" height="56" rx="4" class="off"/>
+  <text x="340" y="56" class="t">Co-compras y ALS</text><text x="340" y="74" class="s">canastas, C = Bᵀ·B, factores</text>
+  <rect x="470" y="34" width="190" height="56" rx="4" class="off"/>
+  <text x="565" y="56" class="t">Imágenes del catálogo</text><text x="565" y="74" class="s">105 mil fotos de producto</text>
+  <rect x="695" y="34" width="185" height="56" rx="4" class="off"/>
+  <text x="787" y="56" class="t">Fashion-CLIP</text><text x="787" y="74" class="s">embeddings de 512 dim.</text>
+  <path d="M210 62 H243" class="ln"/><path d="M660 62 H693" class="ln"/>
+
+  <!-- En línea -->
+  <text x="20" y="128" class="lab">En línea (aplicación, un turno de conversación)</text>
+  <rect x="20" y="142" width="160" height="64" rx="4" class="box"/>
+  <text x="100" y="168" class="t">Entrada</text><text x="100" y="186" class="s">foto y/o mensaje</text>
+
+  <rect x="225" y="142" width="200" height="64" rx="4" class="box"/>
+  <text x="325" y="164" class="t">Análisis de imagen</text><text x="325" y="181" class="s">vector CLIP, ¿es moda?,</text><text x="325" y="196" class="s">atributos con el VLM</text>
+
+  <rect x="225" y="226" width="200" height="64" rx="4" class="llm"/>
+  <text x="325" y="248" class="t">Planificador (LLM)</text><text x="325" y="265" class="s">campos fijos validados</text><text x="325" y="280" class="s">por el código</text>
+
+  <rect x="470" y="142" width="190" height="64" rx="4" class="box"/>
+  <text x="565" y="166" class="t">Similares</text><text x="565" y="184" class="s">índice exacto de 28,966</text><text x="565" y="198" class="s">artículos disponibles</text>
+
+  <rect x="470" y="226" width="190" height="64" rx="4" class="box"/>
+  <text x="565" y="250" class="t">Complementos</text><text x="565" y="268" class="s">co-compras + reglas</text><text x="565" y="282" class="s">de outfit</text>
+
+  <rect x="695" y="184" width="185" height="64" rx="4" class="box"/>
+  <text x="787" y="207" class="t">Re-ranking y filtros</text><text x="787" y="224" class="s">señal principal + popularidad,</text><text x="787" y="238" class="s">uno por producto</text>
+
+  <rect x="470" y="330" width="190" height="64" rx="4" class="llm"/>
+  <text x="565" y="353" class="t">Redactor (LLM)</text><text x="565" y="370" class="s">cita solo IDs recuperados</text>
+
+  <rect x="225" y="330" width="200" height="64" rx="4" class="box"/>
+  <text x="325" y="353" class="t">Validación</text><text x="325" y="370" class="s">elimina IDs y marcas inventados</text>
+
+  <rect x="20" y="330" width="160" height="64" rx="4" class="box"/>
+  <text x="100" y="356" class="t">Respuesta</text><text x="100" y="373" class="s">texto + tarjetas</text>
+
+  <path d="M180 174 H223" class="ln"/>
+  <path d="M180 190 C200 200 200 250 223 256" class="ln"/>
+  <path d="M325 206 V224" class="ln"/>
+  <path d="M425 174 H468" class="ln"/>
+  <path d="M425 258 H468" class="ln"/>
+  <path d="M660 174 C680 174 680 205 693 208" class="ln"/>
+  <path d="M660 258 C680 258 680 228 693 226" class="ln"/>
+  <path d="M787 248 V362 H662" class="ln"/>
+  <path d="M470 362 H427" class="ln"/>
+  <path d="M225 362 H182" class="ln"/>
+
+  <!-- Conexiones fuera de línea -->
+  <path d="M340 90 C340 115 600 120 600 224" class="dash"/>
+  <path d="M787 90 C787 120 600 110 590 140" class="dash"/>
+
+  <text x="20" y="430" class="s" style="text-anchor:start">Cajas azules: artefactos calculados una vez en Kaggle. Cajas naranjas: modelo de lenguaje multimodal local.</text>
+  <text x="20" y="448" class="s" style="text-anchor:start">Las flechas punteadas indican qué artefacto usa cada componente en línea.</text>
+</svg>
