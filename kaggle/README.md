@@ -31,7 +31,7 @@ ejecuta el notebook y lo guarda ya ejecutado en `/kaggle/working`.
 ```bash
 # 1. Publicar código + notebook
 mkdir -p kaggle/_staging/hm-stylist-src
-cp src/*.py 06-rag-y-chat-estilista.ipynb kaggle/hm-stylist-src/dataset-metadata.json kaggle/_staging/hm-stylist-src/
+cp src/*.py notebooks/06-rag-y-chat-estilista.ipynb kaggle/hm-stylist-src/dataset-metadata.json kaggle/_staging/hm-stylist-src/
 kaggle datasets version -p "$PWD/kaggle/_staging/hm-stylist-src" -m "descripción del cambio"
 kaggle datasets status angelnoelprezmartnez/hm-stylist-src        # esperar "ready"
 
@@ -39,8 +39,8 @@ kaggle datasets status angelnoelprezmartnez/hm-stylist-src        # esperar "rea
 kaggle kernels push -p "$PWD/kaggle/06-rag-y-chat-estilista"
 kaggle kernels status angelnoelprezmartnez/06-rag-y-chat-estilista
 
-# 3. Bajar el notebook ejecutado y las salidas, y copiarlo a la raíz
+# 3. Bajar el notebook ejecutado y las salidas, y copiarlo a notebooks/
 kaggle kernels output angelnoelprezmartnez/06-rag-y-chat-estilista -p "$PWD/kaggle/_runs/06" -o
-cp kaggle/_runs/06/06-rag-y-chat-estilista.ipynb .
+cp kaggle/_runs/06/06-rag-y-chat-estilista.ipynb notebooks/
 ```
 Después se revisa el diff y se hace commit desde VS Code.

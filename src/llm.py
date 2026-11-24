@@ -5,6 +5,7 @@ Funciona igual con Ollama, Lemonade, LM Studio, vLLM o una API en la nube; solo 
   LLM_MODEL     nombre del modelo en ese servidor, p. ej. qwen2.5vl:7b
   LLM_API_KEY   solo para APIs en la nube (los servidores locales aceptan cualquier texto)
   LLM_VISION    1 si el modelo acepta imágenes (por defecto), 0 si no
+  LLM_THINKING  0 para pedir que los modelos con razonamiento (Qwen3.x) respondan sin "pensar" (más rápido)
 """
 import base64
 import io
@@ -15,6 +16,15 @@ import time
 
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_MODEL = "qwen2.5vl:7b"
+
+
+THINK_RE = re.compile(r"<think>.*?</think>", re.S)
+
+
+def strip_thinking(text):
+    """Quita el razonamiento que algunos modelos (Qwen3.x) escriben antes de la respuesta."""
+    text = THINK_RE.sub("", text or "")
+    return text.split("</think>")[-1].strip()
 
 
 def parse_json(text):
@@ -51,6 +61,19 @@ class LLM:
         self.client = OpenAI(base_url=self.base_url, api_key=api_key or os.environ.get("LLM_API_KEY", "local"),
                              timeout=timeout)
         self.json_mode = True   # se apaga solo si el servidor no soporta response_format
+        # Sin razonamiento (llama.cpp / Lemonade lo aceptan vía chat_template_kwargs); se apaga si el servidor falla
+        self.extra_body = ({"chat_template_kwargs": {"enable_thinking": False}}
+                           if os.environ.get("LLM_THINKING") == "0" else None)
+
+    def _create(self, **kw):
+        if self.extra_body:
+            try:
+                return self.client.chat.completions.create(extra_body=self.extra_body, **kw)
+            except Exception as e:
+                if "response_format" in str(e).lower():
+                    raise
+                self.extra_body = None
+        return self.client.chat.completions.create(**kw)
 
     def chat(self, messages, temperature=0.2, max_tokens=800, json_mode=False):
         """Devuelve (texto, segundos)."""
@@ -58,14 +81,14 @@ class LLM:
         t = time.perf_counter()
         if json_mode and self.json_mode:
             try:
-                r = self.client.chat.completions.create(response_format={"type": "json_object"}, **kw)
-                return r.choices[0].message.content or "", time.perf_counter() - t
+                r = self._create(response_format={"type": "json_object"}, **kw)
+                return strip_thinking(r.choices[0].message.content), time.perf_counter() - t
             except Exception as e:  # algunos servidores no aceptan response_format
                 if "response_format" not in str(e).lower():
                     raise
                 self.json_mode = False
-        r = self.client.chat.completions.create(**kw)
-        return r.choices[0].message.content or "", time.perf_counter() - t
+        r = self._create(**kw)
+        return strip_thinking(r.choices[0].message.content), time.perf_counter() - t
 
     def chat_json(self, messages, **kw):
         """Devuelve (dict o None, segundos). Reintenta una vez si la respuesta no es JSON válido."""
