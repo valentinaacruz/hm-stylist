@@ -105,7 +105,7 @@ class Recommender:
     # ---------- recomendación ----------
     def recommend(self, q, q_anchor=None, filters=None, exclude=None, k=6, n_anchors=3,
                   kinds=("similar", "complemento"), filter_kinds=("similar",), comp_exclude_groups=(),
-                  style_vec=None, style_w=0.5, anchor_group=None, comp_max_per_group=None):
+                  style_vec=None, style_w=0.5, anchor_group=None, comp_max_per_group=None, comp_lines=None):
         """
         q: vector de búsqueda (imagen, texto o suma normalizada de ambos).
         q_anchor: vector para elegir las anclas de los complementos (por defecto q). Con imagen subida conviene
@@ -115,6 +115,8 @@ class Recommender:
         style_vec: vector de texto del estilo pedido ("formal"); re-ordena los complementos por afinidad visual a él.
         anchor_group: si se da, las anclas solo pueden ser de ese grupo (p. ej. los jeans de una foto de cuerpo entero).
         comp_max_per_group: máximo de complementos por grupo de producto (outfit variado: zapatos, accesorios...).
+        comp_lines: si se da, los complementos solo pueden ser de esas líneas (index_group_name), aunque
+                    "complemento" no esté en filter_kinds (p. ej. "ropa de hombre" con similares y complementos).
         Devuelve (DataFrame, latencias). Columnas: tipo ('similar' | 'complemento'), article_id, score, sim, cop,
         pop, ancla (para complementos: con qué artículo combina) y metadatos.
         """
@@ -152,6 +154,8 @@ class Recommender:
                 comp_c = comp_c[~np.isin(cat.pgroup[comp_c.i], list(comp_exclude_groups))]
             if "complemento" in filter_kinds:
                 comp_c = comp_c[ok_all[comp_c.i.to_numpy()]]
+            if comp_lines:
+                comp_c = comp_c[np.isin(cat.articles["index_group_name"].to_numpy()[comp_c.i.to_numpy()], comp_lines)]
             out.append(("complemento", comp_c, "cop"))
         lat["complementos"] = time.perf_counter() - t
         t = time.perf_counter()

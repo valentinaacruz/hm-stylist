@@ -98,7 +98,13 @@ COLOR_WORDS = re.compile(
     r"vino|marino|celeste|black|white|red|blue|green|yellow|pink|purple|grey|gray|brown|orange|khaki|silver|gold|"
     r"navy)\b", re.I)
 LINEA_WORDS = re.compile(r"\b(hombres?|caballeros?|mujer(es)?|damas?|niñ[oa]s?|beb[eé]s?|juvenil(es)?|"
-                         r"deportiv[oa]s?|men|women|kids?|baby|sport)\b", re.I)
+                         r"deportiv[oa]s?|men|man|women|woman|masculin[oa]s?|femenin[oa]s?|infantil(es)?|"
+                         r"kids?|baby|sport)\b", re.I)
+# Línea dicha en el texto → index_group_name (respaldo si el LLM no la pone). Solo género y niños: "deportivo" o
+# "juvenil" suelen describir el estilo de la prenda, no la sección.
+LINEA_MAP = [(r"\b(hombres?|caballeros?|men|man|masculin[oa]s?)\b", "Menswear"),
+             (r"\b(mujer(es)?|damas?|women|woman|femenin[oa]s?)\b", "Ladieswear"),
+             (r"\b(niñ[oa]s?|beb[eé]s?|kids?|baby|infantil(es)?)\b", "Baby/Children")]
 COMBINE_WORDS = re.compile(r"combin|con qu[eé]|outfit|look completo|\bvan? con\b|le va[ny]?\b|le queda|"
                            r"quedan? con|acompa[ñn]|complement", re.I)
 OTHER_COLOR = re.compile(r"\b(otro|otros|distinto|diferente)s?\s+colou?r|\bother colou?r|\bdifferent colou?r", re.I)
@@ -259,6 +265,8 @@ class Stylist:
         if linea and not LINEA_WORDS.search(message):
             notes.append(f"línea ignorada: {linea}")
             linea = ""
+        if not linea:
+            linea = self._linea_from_text(message)               # dijo "de hombre" y el LLM no lo puso
         new = {"prenda_en": _ascii_words(p.get("prenda_en")), "estilo_en": _ascii_words(p.get("estilo_en")),
                "color": color, "linea": linea}
 
@@ -267,6 +275,8 @@ class Stylist:
             # La prenda que el usuario YA tiene es la de la búsqueda anterior; lo que diga el LLM en prenda_en
             # suele ser el complemento ("pantalones"), que va en tipo_complemento.
             new = {key: prev.get(key, "") for key in SLOTS}
+            if linea:                     # "zapatos de hombre": la línea del complemento sí la dice este mensaje
+                new["linea"] = linea
         elif refine:
             changed_garment = new["prenda_en"] and prev.get("prenda_en") and new["prenda_en"] != prev["prenda_en"]
             for key in SLOTS:
@@ -326,6 +336,13 @@ class Stylist:
                 return groups[0]
         return None
 
+    @staticmethod
+    def _linea_from_text(text):
+        for pat, value in LINEA_MAP:
+            if re.search(pat, text or "", re.I):
+                return value
+        return ""
+
     def _color_from_text(self, text):
         for pat, value in COLOR_MAP:
             if re.search(pat, text, re.I) and value in self.colors:
@@ -352,11 +369,12 @@ class Stylist:
             f["perceived_colour_master_name"] = [color]
         if plan["excluir_color"] and not comp:
             e["perceived_colour_master_name"] = plan["excluir_color"]
-        drop = lambda keep: {c: v for c, v in f.items() if c in keep}
+        # La línea (hombre, mujer, niños) nunca se relaja: unos zapatos de mujer no sirven si pidió de hombre.
+        drop = lambda keep: {c: v for c, v in f.items() if c in keep | {"index_group_name"}}
         variants = [(f, e),
-                    (drop({"product_group_name", "index_group_name"}), e),   # sin color
-                    (drop({"product_group_name"}), e),                       # solo el tipo de prenda
-                    ({}, {})]
+                    (drop({"product_group_name"}), e),                       # sin color
+                    (drop({"product_group_name"}), {}),                      # solo el tipo de prenda (y la línea)
+                    (drop(set()), {})]                                       # sin filtros (salvo la línea)
         if comp and group:
             variants = variants[:3]       # un complemento pedido ("zapatos") nunca se cambia por otro tipo
         out = []
@@ -418,7 +436,8 @@ class Stylist:
         for j, (f, e) in enumerate(variants):
             res, rl = self.rec.recommend(q, q_anchor, f, e, k=k, n_anchors=5, kinds=kinds, filter_kinds=filter_kinds,
                                          comp_exclude_groups=basics, style_vec=style_vec, anchor_group=anchor_group,
-                                         comp_max_per_group=None if plan["tipo_complemento"] else 2)
+                                         comp_max_per_group=None if plan["tipo_complemento"] else 2,
+                                         comp_lines=[plan["linea"]] if plan["linea"] else None)
             counts = res.tipo.value_counts() if not res.empty else {}
             if all(counts.get(kd, 0) >= need for kd in kinds):
                 break
